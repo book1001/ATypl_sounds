@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Sounds in Motion</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  overflow:hidden;
+  width:100vw;
+  height:100vh;
+  font-family:sans-serif;
+}
+
+.hide-system-cursor,
+.hide-system-cursor *{
+  cursor:none !important;
+}
+
+/* =========================
+   WALL
+========================= */
+
+#wall{
+  position:relative;
+  width:100vw;
+  height:100vh;
+}
+
+/* =========================
+   IMAGE
+========================= */
+
+.img-wrapper{
+  position:absolute;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+
+  cursor:grab;
+}
+
+.img-wrapper:active{
+  cursor:grabbing;
+}
+
+.img{
+  width:220px;
+  user-select:none;
+  pointer-events:auto;
+}
+
+.label{
+  margin-top:6px;
+
+  font-size:12px;
+  color:white;
+
+  white-space:nowrap;
+
+  opacity:0;
+  transition:opacity 0.2s;
+
+  pointer-events:none;
+}
+
+.img-wrapper:hover .label{
+  opacity:1;
+}
+
+/* =========================
+   CURSOR + WEBCAM
+========================= */
+
+.cursor-wrapper{
+  position:absolute;
+
+  pointer-events:none;
+
+  transform:
+    translate(-50%, -50%);
+
+  z-index:999999;
+}
+
+.webcam{
+  width:90px;
+  height:90px;
+  object-fit:cover;
+  border-radius:50%;
+  display:block;
+  margin-bottom:10px;
+  overflow:hidden;
+  transform: scaleX(-1);
+}
+
+.cursor{
+  width:12px;
+  height:12px;
+
+  border-radius:50%;
+
+  margin:auto;
+
+  mix-blend-mode:difference;
+}
+
+/* =========================
+   BUTTON
+========================= */
+
+#webcamBtn{
+  position:fixed;
+
+  top:20px;
+  left:20px;
+
+  z-index:9999999;
+
+  padding:12px 18px;
+
+  background:white;
+  border:none;
+
+  cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<button id="webcamBtn">
+  Webcam
+</button>
+
+<div id="wall"></div>
+
+<script>
+
+// =========================
+// APPS SCRIPT URL
+// =========================
+
+const APPS_SCRIPT_URL =
+'https://script.google.com/macros/s/AKfycbyY5zX0YzltmhcDQSuEaNSUxTIJqfvJLscVEK25M8km9JsSHfjbHbljr3BxhPiymjoRgA/exec';
+
+// =========================
+// FIREBASE
+// =========================
+
+const firebaseConfig = {
+
+  apiKey:
+  "AIzaSyD6EC6TaaXKVpJc9g0kpts9JVmSBRleOsc",
+
+  authDomain:
+  "sounds-in-motion.firebaseapp.com",
+
+  databaseURL:
+  "https://sounds-in-motion-default-rtdb.firebaseio.com",
+
+  projectId:
+  "sounds-in-motion",
+
+  storageBucket:
+  "sounds-in-motion.firebasestorage.app",
+
+  messagingSenderId:
+  "495934795694",
+
+  appId:
+  "1:495934795694:web:3bc59be8db26e7637da23f"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.database();
+
+const wall =
+document.getElementById('wall');
+
+// =========================
+// IMAGE STATE
+// =========================
+
+const loadedImages = new Map();
+
+async function loadImages(){
+
+  const res =
+    await fetch(APPS_SCRIPT_URL);
+
+  const images =
+    await res.json();
+
+  const currentIds =
+    new Set(images.map(i => i.id));
+
+  // REMOVE
+  loadedImages.forEach((obj,id)=>{
+
+    if(!currentIds.has(id)){
+
+      obj.wrapper.style.opacity = 0;
+
+      setTimeout(()=>{
+        obj.wrapper.remove();
+      },300);
+
+      loadedImages.delete(id);
+
+      db.ref('positions/' + id)
+        .remove();
+    }
+  });
+
+  // ADD / UPDATE
+  images.forEach(imgData=>{
+
+    const rawName =
+      imgData.name || '';
+
+    const cleanName =
+      rawName.replace(/\.[^/.]+$/, "");
+
+    // UPDATE LABEL
+    if(loadedImages.has(imgData.id)){
+
+      const existing =
+        loadedImages.get(imgData.id);
+
+      existing.label.textContent =
+        cleanName;
+
+      return;
+    }
+
+    // CREATE
+    const wrapper =
+      document.createElement('div');
+
+    wrapper.className =
+      'img-wrapper';
+
+    const img =
+      document.createElement('img');
+
+    img.src = imgData.url;
+    img.className = 'img';
+
+    const label =
+      document.createElement('div');
+
+    label.className = 'label';
+    label.textContent = cleanName;
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(label);
+
+    wall.appendChild(wrapper);
+
+    loadedImages.set(imgData.id,{
+      wrapper,
+      img,
+      label
+    });
+
+    const ref =
+      db.ref('positions/' + imgData.id);
+
+    ref.on('value',snap=>{
+
+      const d = snap.val();
+
+      if(d){
+
+        wrapper.style.left =
+          d.x + 'px';
+
+        wrapper.style.top =
+          d.y + 'px';
+
+      }else{
+
+        ref.set({
+
+          x:
+            Math.random() *
+            (window.innerWidth - 300),
+
+          y:
+            Math.random() *
+            (window.innerHeight - 300)
+        });
+      }
+    });
+
+    makeDraggable(wrapper, ref);
+  });
+}
+
+loadImages();
+
+setInterval(loadImages,1000);
+
+// =========================
+// DRAG
+// =========================
+
+function makeDraggable(el, ref){
+
+  let dragging = false;
+
+  let sx = 0;
+  let sy = 0;
+
+  el.addEventListener('mousedown',e=>{
+
+    dragging = true;
+
+    sx =
+      e.clientX - el.offsetLeft;
+
+    sy =
+      e.clientY - el.offsetTop;
+
+    el.style.zIndex = 2;
+
+    e.preventDefault();
+  });
+
+  document.addEventListener(
+    'mousemove',
+    e=>{
+
+    if(!dragging) return;
+
+    const x =
+      e.clientX - sx;
+
+    const y =
+      e.clientY - sy;
+
+    el.style.left =
+      x + 'px';
+
+    el.style.top =
+      y + 'px';
+
+    ref.set({x,y});
+  });
+
+  document.addEventListener(
+    'mouseup',
+    ()=>{
+
+    dragging = false;
+
+    el.style.zIndex = 1;
+  });
+}
+
+// =========================
+// CURSOR SYSTEM
+// =========================
+
+const cursorsRef =
+  db.ref('cursors');
+
+const myId =
+  Math.random()
+  .toString(36)
+  .substr(2,9);
+
+const myColor =
+  `hsl(${Math.random()*360},
+  80%,60%)`;
+
+const cursorEls = {};
+
+let lastMove = 0;
+
+document.addEventListener(
+  'mousemove',
+  e=>{
+
+  const now = Date.now();
+
+  if(now - lastMove < 16) return;
+
+  lastMove = now;
+
+  cursorsRef.child(myId).update({
+
+    x:e.clientX,
+    y:e.clientY,
+    color:myColor
+  });
+});
+
+const myCursorRef =
+  cursorsRef.child(myId);
+
+myCursorRef.onDisconnect()
+.remove();
+
+// =========================
+// WEBCAM
+// =========================
+
+let webcamEnabled = false;
+
+let localVideo = null;
+let webcamCanvas = null;
+let webcamCtx = null;
+
+document
+.getElementById('webcamBtn')
+.addEventListener(
+  'click',
+  startWebcam
+);
+
+async function startWebcam(){
+
+  if(webcamEnabled) return;
+
+  webcamEnabled = true;
+  document.body.classList.add('hide-system-cursor');
+
+  localVideo =
+    document.createElement('video');
+
+  const stream =
+    await navigator.mediaDevices
+    .getUserMedia({
+
+      video:true,
+      audio:false
+    });
+
+  localVideo.srcObject = stream;
+
+  await localVideo.play();
+
+  webcamCanvas =
+    document.createElement('canvas');
+
+  webcamCanvas.width = 160;
+  webcamCanvas.height = 120;
+
+  webcamCtx =
+    webcamCanvas.getContext('2d');
+
+  sendWebcamFrames();
+}
+
+function sendWebcamFrames(){
+
+  setInterval(()=>{
+
+    if(!webcamEnabled) return;
+
+    webcamCtx.drawImage(
+      localVideo,
+      0,
+      0,
+      160,
+      120
+    );
+
+    const dataURL =
+      webcamCanvas.toDataURL(
+        'image/jpeg',
+        0.35
+      );
+
+    cursorsRef
+      .child(myId)
+      .update({
+
+        webcam:dataURL
+      });
+
+  },200);
+}
+
+// =========================
+// RENDER CURSORS
+// =========================
+
+cursorsRef.on(
+  'value',
+  snap=>{
+
+  const data =
+    snap.val() || {};
+
+  Object.keys(data).forEach(id=>{
+
+    const c = data[id];
+
+    // CREATE
+    if(!cursorEls[id]){
+
+      const wrapper =
+        document.createElement('div');
+
+      wrapper.className =
+        'cursor-wrapper';
+
+      const webcam =
+        document.createElement('img');
+
+      webcam.className =
+        'webcam';
+
+      const dot =
+        document.createElement('div');
+
+      dot.className =
+        'cursor';
+
+      wrapper.appendChild(webcam);
+      wrapper.appendChild(dot);
+
+      document.body
+      .appendChild(wrapper);
+
+      cursorEls[id] = {
+        wrapper,
+        webcam,
+        dot
+      };
+    }
+
+    // UPDATE
+    const el =
+      cursorEls[id];
+
+    el.wrapper.style.left =
+      c.x + 'px';
+
+    el.wrapper.style.top =
+      c.y + 'px';
+
+    el.dot.style.background =
+      c.color || 'white';
+
+    // webcam
+    if(c.webcam){
+
+      el.webcam.src =
+        c.webcam;
+
+      el.webcam.style.display =
+        'block';
+
+    }else{
+
+      el.webcam.style.display =
+        'none';
+    }
+  });
+
+  // REMOVE
+  Object.keys(cursorEls)
+  .forEach(id=>{
+
+    if(!data[id]){
+
+      cursorEls[id]
+      .wrapper
+      .remove();
+
+      delete cursorEls[id];
+    }
+  });
+});
+
+</script>
+</body>
+</html>

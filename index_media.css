@@ -2,6 +2,11 @@
 
 @media only screen and (max-width:750px) { 
   #wall {
-    transform: scale(0.5);
+    /* display: none; */
+    /* transform: scale(0.5); */
   } 
+
+  .mobileView {
+    display: block;
+  }
 }

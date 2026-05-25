@@ -1,8 +1,5 @@
 
 html,body {
-  /* font-family: "agahnsangsoo2012", sans-serif;
-  font-weight: 500;
-  font-style: normal; */
   font-family: "Noto Sans KR", sans-serif;
   font-optical-sizing: auto;
   font-weight: 900;
@@ -10,11 +7,12 @@ html,body {
 }
 
 body {
-  /* background-image: url("./img/bg1.jpg"); */
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
+  width: 100vw;
+  height: 100vh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  background: white;
 }
 
 .header {

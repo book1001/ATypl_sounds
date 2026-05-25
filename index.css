@@ -42,6 +42,7 @@ body {
   right: 4px;
   line-height: 22px;
   pointer-events: none;
+  z-index: 4;
 }
 
 .side-l {
@@ -51,6 +52,7 @@ body {
   transform: rotate(90deg) translateY(-100%);
   transform-origin: top left;
   line-height: 22px;
+  z-index: 4;
 }
 
 .side-r {
@@ -73,4 +75,5 @@ button {
   font-style: normal;
   font-size: 15px;
   cursor: pointer;
+  z-index: 5;
 }

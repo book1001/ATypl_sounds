@@ -38,8 +38,8 @@ body {
 
 .footer-l {
   position: fixed;
-  bottom: 4px;
-  right: 4px;
+  bottom: 0;
+  right: 8px;
   line-height: 22px;
   pointer-events: none;
   z-index: 4;
